@@ -17,9 +17,10 @@ type TCPConnection struct {
 	closeChan chan struct{}
 }
 
-func NewTcpConnection(con net.Conn) *TCPConnection {
+func NewTcpConnection(s *Server, con net.Conn) *TCPConnection {
 	f, _ := con.(*net.TCPConn).File()
 	return &TCPConnection{
+		server:    s,
 		Conn:      con,
 		Id:        uint64(f.Fd()),
 		Closed:    false,
@@ -42,7 +43,6 @@ func (t *TCPConnection) GetManage() *ClientManage {
 
 func (t *TCPConnection) Start() {
 	t.server.manage.AddClient(t)
-	go t.write()
 	go t.read()
 	log.Notice("%s", "connetion start")
 }

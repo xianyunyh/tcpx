@@ -61,9 +61,12 @@ func (s *Server) Start() {
 			log.Println(err.Error())
 			continue
 		}
-
-		c := NewTcpConnection(conn)
-		c.server = s
+		if s.manage.Overload() {
+			fmt.Println("overload")
+			conn.Close()
+			continue
+		}
+		c := NewTcpConnection(s, conn)
 		if s.onConnect != nil {
 			s.onConnect(c)
 		}
