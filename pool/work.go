@@ -1,6 +1,7 @@
 package workpool
 
 import (
+	"context"
 	"errors"
 	"fmt"
 )
@@ -19,14 +20,19 @@ type WorkerPool struct {
 	closeChan chan struct{}
 	Msgs      chan Msg
 	runner    Runner
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 func NewPool(size int) *WorkerPool {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &WorkerPool{
 		Size:      size,
 		Closed:    false,
 		closeChan: make(chan struct{}),
 		Msgs:      make(chan Msg),
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 }
 
@@ -57,7 +63,7 @@ func (p *WorkerPool) doWork(id int) {
 		select {
 		case msg := <-p.Msgs:
 			fmt.Println(msg.Data)
-		case <-p.closeChan:
+		case <-p.ctx.Done():
 			return
 		}
 	}
@@ -68,5 +74,5 @@ func (p *WorkerPool) Stop() {
 		return
 	}
 	p.Closed = true
-	p.closeChan <- struct{}{}
+	p.cancel()
 }

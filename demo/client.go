@@ -1,4 +1,4 @@
-// +build
+// +build client
 package main
 
 import (

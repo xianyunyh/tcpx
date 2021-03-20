@@ -6,7 +6,7 @@
 - [x] TCP链接限制
 - [x] workpool 模式
 - [x] 路由调度
-- [ ] 心跳维持
+- [x] 心跳维持
 - [ ] protobuf 支持
 - [ ] websocket协议
 - [ ] 解析UDP 
