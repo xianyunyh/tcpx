@@ -18,13 +18,13 @@ func (r *Request) GetMsgId() uint32 {
 func (r *Request) setConnection(conn *TCPConnection) {
 	r.conn = conn
 }
-func (r *Request) setData(data Msger) {
-	r.msg = data
+func (r *Request) setMsg(n Msger) {
+	r.msg = n
 }
 
 func (r *Request) GetConnection() *TCPConnection {
 	return r.conn
 }
-func (r *Request) GetData() Msger {
+func (r *Request) GetMsg() Msger {
 	return r.msg
 }

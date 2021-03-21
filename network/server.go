@@ -14,6 +14,7 @@ type IServer interface {
 	SetOnClose(func(c *TCPConnection))
 	SetOnConnect(func(c *TCPConnection))
 	AddHandler(id uint32, handle Handler)
+	SetMsgParser(p MsgParser)
 }
 
 type Server struct {
@@ -21,6 +22,8 @@ type Server struct {
 	IpVer     string
 	Ip        string
 	Port      int
+	Type      string
+	parser    MsgParser
 	Listener  net.Listener
 	errorChan chan error
 	exitChan  chan struct{}
@@ -31,18 +34,29 @@ type Server struct {
 }
 
 func NewServer(config *conf.Zconfig) IServer {
+	var p MsgParser = NewMsgParse(4)
+	if config.Type == "ws" {
+		p = NewWsMsgParse(4)
+	}
 	return &Server{
 		Name:      config.Name,
 		Ip:        config.Ip,
 		IpVer:     config.IpVer,
 		Port:      config.Port,
 		Listener:  nil,
+		parser:    p,
+		Type:      config.Type,
 		errorChan: make(chan error, 1),
 		exitChan:  make(chan struct{}, 1),
 		manage:    NewManage(config.MaxClients),
 		route:     NewMsgHandler(uint32(config.PoolSize)),
 	}
 }
+
+func (s *Server) SetMsgParser(p MsgParser) {
+	s.parser = p
+}
+
 func (s *Server) Start() {
 	addr, err := net.ResolveTCPAddr(s.IpVer, fmt.Sprintf("%s:%d", s.Ip, s.Port))
 	if err != nil {

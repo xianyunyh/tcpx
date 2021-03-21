@@ -11,11 +11,10 @@ type PingHandle struct {
 }
 
 func (p *PingHandle) BeforeRequest(req *network.Request) {
-
-	log.Println("before")
+	log.Printf("before recive :%s", req.GetMsg().GetData())
 }
 func (p *PingHandle) DoRequest(req *network.Request) {
-	m := network.NewMsgParse(4)
+	m := network.NewWsMsgParse(4)
 	msg := network.NewMsg([]byte("hello world"))
 	req.GetConnection().GetTcpConnection().Write([]byte(m.Pack(msg)))
 }
@@ -29,6 +28,7 @@ func main() {
 		Name:       "test",
 		Ip:         "127.0.0.1",
 		Port:       9090,
+		Type:       "ws",
 		IpVer:      "tcp",
 		MaxClients: 100,
 		PoolSize:   10,

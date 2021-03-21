@@ -7,7 +7,9 @@ import (
 
 type Msger interface {
 	GetLen() uint32
+	SetLen(l uint32)
 	GetData() []byte
+	SetData(data []byte)
 }
 type Msg struct {
 	Len  uint32
@@ -23,11 +25,23 @@ func NewMsg(data []byte) *Msg {
 func (m *Msg) GetLen() uint32 {
 	return m.Len
 }
+func (m *Msg) SetLen(l uint32) {
+	m.Len = l
+}
 func (m *Msg) GetData() []byte {
 	if m.Data == nil {
 		return []byte{}
 	}
 	return m.Data
+}
+
+func (m *Msg) SetData(data []byte) {
+	m.Data = data
+}
+
+type MsgParser interface {
+	Pack(msg Msger) []byte
+	UnPack(raw []byte) (Msger, error)
 }
 
 type MsgParse struct {
@@ -40,7 +54,7 @@ func NewMsgParse(headLen uint32) *MsgParse {
 	}
 }
 
-func (p *MsgParse) Pack(msg *Msg) []byte {
+func (p *MsgParse) Pack(msg Msger) []byte {
 	if msg == nil {
 		return []byte{}
 	}
@@ -50,7 +64,7 @@ func (p *MsgParse) Pack(msg *Msg) []byte {
 	return buf
 }
 
-func (p *MsgParse) UnPack(raw []byte) (*Msg, error) {
+func (p *MsgParse) UnPack(raw []byte) (Msger, error) {
 	if len(raw) < int(p.HeadLen) {
 		return nil, errors.New("to less raw")
 	}

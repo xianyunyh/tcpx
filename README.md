@@ -8,5 +8,5 @@
 - [x] 路由调度
 - [x] 心跳维持
 - [ ] protobuf 支持
-- [ ] websocket协议
+- [x] websocket协议
 - [ ] 解析UDP 
