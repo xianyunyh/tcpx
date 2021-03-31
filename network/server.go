@@ -1,10 +1,12 @@
 package network
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"net"
+	"time"
 	"tinx/conf"
+	"tinx/log"
 )
 
 type IServer interface {
@@ -14,37 +16,31 @@ type IServer interface {
 	SetOnClose(func(c *TCPConnection))
 	SetOnConnect(func(c *TCPConnection))
 	AddHandler(id uint32, handle Handler)
-	SetMsgParser(p MsgParser)
 }
 
 type Server struct {
-	Name      string
-	IpVer     string
-	Ip        string
-	Port      int
-	Type      string
-	parser    MsgParser
-	Listener  net.Listener
-	errorChan chan error
-	exitChan  chan struct{}
-	manage    *ClientManage
-	onConnect func(c *TCPConnection)
-	onClose   func(c *TCPConnection)
-	route     *MsgHandle
+	Name        string
+	Type        string
+	Ip          string
+	Port        int
+	NetWork     string
+	readTimeout time.Duration
+	Listener    net.Listener
+	errorChan   chan error
+	exitChan    chan struct{}
+	manage      *ClientManage
+	onConnect   func(c *TCPConnection)
+	onClose     func(c *TCPConnection)
+	route       *MsgHandle
 }
 
 func NewServer(config *conf.Zconfig) IServer {
-	var p MsgParser = NewMsgParse(4)
-	if config.Type == "ws" {
-		p = NewWsMsgParse(4)
-	}
 	return &Server{
 		Name:      config.Name,
 		Ip:        config.Ip,
-		IpVer:     config.IpVer,
+		NetWork:   config.NetWork,
 		Port:      config.Port,
 		Listener:  nil,
-		parser:    p,
 		Type:      config.Type,
 		errorChan: make(chan error, 1),
 		exitChan:  make(chan struct{}, 1),
@@ -53,17 +49,13 @@ func NewServer(config *conf.Zconfig) IServer {
 	}
 }
 
-func (s *Server) SetMsgParser(p MsgParser) {
-	s.parser = p
-}
-
 func (s *Server) Start() {
-	addr, err := net.ResolveTCPAddr(s.IpVer, fmt.Sprintf("%s:%d", s.Ip, s.Port))
+	addr, err := net.ResolveTCPAddr(s.NetWork, fmt.Sprintf("%s:%d", s.Ip, s.Port))
 	if err != nil {
 		s.errorChan <- err
 		return
 	}
-	listener, err := net.ListenTCP(s.IpVer, addr)
+	listener, err := net.ListenTCP(s.NetWork, addr)
 	if err != nil {
 		s.errorChan <- err
 		return
@@ -72,7 +64,7 @@ func (s *Server) Start() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println(err.Error())
+			log.Errorf("err:%s", err.Error())
 			continue
 		}
 		if s.manage.Overload() {
@@ -80,11 +72,19 @@ func (s *Server) Start() {
 			conn.Close()
 			continue
 		}
+		// set keplive
+		if tc, ok := conn.(*net.TCPConn); ok {
+			tc.SetKeepAlive(true)
+			tc.SetKeepAlivePeriod(3 * time.Minute)
+			tc.SetLinger(10)
+		}
 		c := NewTcpConnection(s, conn)
 		if s.onConnect != nil {
 			s.onConnect(c)
 		}
-		c.Start()
+		//add to manage
+		s.manage.AddClient(c)
+		go c.serveCon()
 	}
 }
 
@@ -104,6 +104,9 @@ func (s *Server) AddHandler(id uint32, handle Handler) {
 }
 
 func (s *Server) Stop() error {
+	if s.Listener == nil {
+		return errors.New("server closed")
+	}
 	s.manage.Clear()
 	s.route.Close()
 	return s.Listener.Close()

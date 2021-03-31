@@ -5,6 +5,7 @@ import (
 	"log"
 	"tinx/conf"
 	"tinx/network"
+	"tinx/protocol"
 )
 
 type PingHandle struct {
@@ -14,8 +15,8 @@ func (p *PingHandle) BeforeRequest(req *network.Request) {
 	log.Printf("before recive :%s", req.GetMsg().GetData())
 }
 func (p *PingHandle) DoRequest(req *network.Request) {
-	m := network.NewWsMsgParse(4)
-	msg := network.NewMsg([]byte("hello world"))
+	m := protocol.NewWsMsgParse(4)
+	msg := protocol.NewMsg([]byte("hello world"))
 	req.GetConnection().GetTcpConnection().Write([]byte(m.Pack(msg)))
 }
 func (p *PingHandle) AfterRequest(req *network.Request) {
@@ -28,8 +29,8 @@ func main() {
 		Name:       "test",
 		Ip:         "127.0.0.1",
 		Port:       9090,
-		Type:       "ws",
-		IpVer:      "tcp",
+		Type:       "websocket",
+		NetWork:    "tcp",
 		MaxClients: 100,
 		PoolSize:   10,
 	}

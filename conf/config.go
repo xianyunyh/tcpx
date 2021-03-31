@@ -5,7 +5,7 @@ type Zconfig struct {
 	Ip         string
 	Port       int
 	Type       string
-	IpVer      string
+	NetWork    string
 	MaxClients uint32
 	PoolSize   int
 }
