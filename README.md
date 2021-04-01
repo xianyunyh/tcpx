@@ -9,4 +9,5 @@
 - [x] 心跳维持
 - [ ] protobuf 支持
 - [x] websocket协议
-- [ ] 解析UDP 
+- [ ] 解析UDP
+- [x] tls 支持

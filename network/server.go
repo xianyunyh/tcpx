@@ -1,6 +1,7 @@
 package network
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -9,23 +10,15 @@ import (
 	"tinx/log"
 )
 
-type IServer interface {
-	Start()
-	Stop() error
-	Serve()
-	SetOnClose(func(c *TCPConnection))
-	SetOnConnect(func(c *TCPConnection))
-	AddHandler(id uint32, handle Handler)
-}
-
 type Server struct {
 	Name        string
 	Type        string
 	Ip          string
 	Port        int
 	NetWork     string
+	Tlsconfig   *tls.Config
+	listener    net.Listener
 	readTimeout time.Duration
-	Listener    net.Listener
 	errorChan   chan error
 	exitChan    chan struct{}
 	manage      *ClientManage
@@ -34,13 +27,15 @@ type Server struct {
 	route       *MsgHandle
 }
 
-func NewServer(config *conf.Zconfig) IServer {
+type OptionFunc func(s *Server)
+
+func NewServer(config *conf.Zconfig) *Server {
 	return &Server{
 		Name:      config.Name,
 		Ip:        config.Ip,
 		NetWork:   config.NetWork,
 		Port:      config.Port,
-		Listener:  nil,
+		listener:  nil,
 		Type:      config.Type,
 		errorChan: make(chan error, 1),
 		exitChan:  make(chan struct{}, 1),
@@ -49,18 +44,24 @@ func NewServer(config *conf.Zconfig) IServer {
 	}
 }
 
+func (s *Server) WithTlsOption(c *tls.Config) {
+	s.Tlsconfig = c
+}
+
 func (s *Server) Start() {
-	addr, err := net.ResolveTCPAddr(s.NetWork, fmt.Sprintf("%s:%d", s.Ip, s.Port))
+	addr := fmt.Sprintf("%s:%d", s.Ip, s.Port)
+	var err error
+	var listener net.Listener
+	if s.Tlsconfig != nil {
+		listener, err = tls.Listen("tcp", addr, s.Tlsconfig)
+	} else {
+		listener, err = net.Listen(s.NetWork, addr)
+	}
 	if err != nil {
 		s.errorChan <- err
 		return
 	}
-	listener, err := net.ListenTCP(s.NetWork, addr)
-	if err != nil {
-		s.errorChan <- err
-		return
-	}
-	s.Listener = listener
+	s.listener = listener
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -104,12 +105,12 @@ func (s *Server) AddHandler(id uint32, handle Handler) {
 }
 
 func (s *Server) Stop() error {
-	if s.Listener == nil {
+	if s.listener == nil {
 		return errors.New("server closed")
 	}
 	s.manage.Clear()
 	s.route.Close()
-	return s.Listener.Close()
+	return s.listener.Close()
 }
 
 func (s *Server) Serve() {
